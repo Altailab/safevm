@@ -1,5 +1,5 @@
 import { Elysia, t } from "elysia";
-import { resolve4 } from "node:dns/promises";
+import { Resolver, resolve4 } from "node:dns/promises";
 import { prisma } from "../db.ts";
 import { env } from "../env.ts";
 import { authGuard, isAdmin } from "../auth.ts";
@@ -19,6 +19,20 @@ async function run(cmd: string[]): Promise<{ code: number; out: string }> {
     p.exited,
   ]);
   return { code, out: `${stdout}${stderr}`.trim() };
+}
+
+// Resolve A records via PUBLIC resolvers (1.1.1.1 / 8.8.8.8) so we read the
+// current public DNS, not the box's stale systemd-resolved cache (which lags the
+// record TTL — e.g. after toggling a Cloudflare record). Falls back to the
+// system resolver if public DNS is unreachable.
+async function resolveFresh(domain: string): Promise<string[]> {
+  const r = new Resolver();
+  r.setServers(["1.1.1.1", "8.8.8.8"]);
+  try {
+    return await r.resolve4(domain);
+  } catch {
+    return await resolve4(domain).catch(() => [] as string[]);
+  }
 }
 
 let cachedIp = "";
@@ -62,7 +76,7 @@ export const setupRoutes = new Elysia({ prefix: "/api/setup" })
       const domain = body.domain.trim().toLowerCase();
       if (!HOSTNAME_RE.test(domain)) return status(400, "invalid domain");
       const ip = await publicIp();
-      const addresses = await resolve4(domain).catch(() => [] as string[]);
+      const addresses = await resolveFresh(domain);
       return {
         domain,
         serverIp: ip,

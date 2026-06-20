@@ -42,6 +42,10 @@ const CAP_ADD = (process.env.DOCKER_CAP_ADD ??
   .map((c) => c.trim())
   .filter(Boolean);
 
+// Cap the process/thread count per desktop so a fork bomb can't exhaust the
+// host's PIDs. Generous enough for an XFCE desktop + browser.
+const PIDS_LIMIT = Number(process.env.DOCKER_PIDS_LIMIT ?? 2048);
+
 async function ensureDesktopNetwork(): Promise<void> {
   const existing = await docker(["network", "ls", "--filter", `name=^${DESKTOP_NET}$`, "--format", "{{.Name}}"]).catch(() => "");
   if (existing.trim() === DESKTOP_NET) return;
@@ -148,6 +152,7 @@ export class DockerRuntime implements Runtime {
       "-p", `${bind}::3000`,
       "--cpus", String(spec.vcpus),
       "--memory", `${spec.memMib}m`,
+      "--pids-limit", String(PIDS_LIMIT),
       // Hardening (#3): least privilege.
       "--security-opt", "no-new-privileges",
       "--cap-drop", "ALL",

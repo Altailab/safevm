@@ -181,6 +181,20 @@ fi
 systemctl enable --now docker
 [[ "$APP_USER" != "root" ]] && usermod -aG docker "$APP_USER" || true
 
+# Optional user-namespace remapping: a container escape lands as an unprivileged
+# host user, not root. Opt-in (USERNS_REMAP=1) — it's a daemon-wide change, so we
+# set it BEFORE any container/volume is created so ownership is remapped cleanly.
+if [[ "${USERNS_REMAP:-0}" == "1" ]]; then
+  echo "==> Enabling Docker userns-remap"
+  mkdir -p /etc/docker
+  if [[ -f /etc/docker/daemon.json ]] && ! grep -q userns-remap /etc/docker/daemon.json; then
+    echo "    existing /etc/docker/daemon.json — add '\"userns-remap\": \"default\"' yourself, then restart docker" >&2
+  else
+    echo '{ "userns-remap": "default" }' > /etc/docker/daemon.json
+    systemctl restart docker
+  fi
+fi
+
 # --- 3. bun (system-wide at /opt/bun) --------------------------------------
 BUN_DIR=/opt/bun
 BUN=/opt/bun/bin/bun

@@ -1,6 +1,10 @@
 # Single-box dev/self-host stack: the backing services for SafeVM.
 # App processes (control-plane, node-agent, web) run via `bun run dev` against these.
 # A production single-box install will add the app containers here too.
+#
+# Ports bind to 127.0.0.1 ONLY: the app services reach them over loopback, but
+# desktop containers (and the public internet) cannot — a desktop can't connect
+# to Postgres/Redis/RabbitMQ via the host gateway.
 name: safevm-cloud
 services:
   postgres:
@@ -10,7 +14,7 @@ services:
       POSTGRES_PASSWORD: safevm
       POSTGRES_DB: safevm
     ports:
-      - "5433:5432" # host 5433 -> avoids a local Postgres already on 5432
+      - "127.0.0.1:5433:5432" # host 5433 -> avoids a local Postgres already on 5432
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -22,7 +26,7 @@ services:
   redis:
     image: redis:7
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - redisdata:/data
 
@@ -32,8 +36,8 @@ services:
       RABBITMQ_DEFAULT_USER: safevm
       RABBITMQ_DEFAULT_PASS: safevm
     ports:
-      - "5672:5672" # amqp
-      - "15672:15672" # management UI
+      - "127.0.0.1:5672:5672" # amqp
+      - "127.0.0.1:15672:15672" # management UI
     volumes:
       - rabbitmqdata:/var/lib/rabbitmq
 
