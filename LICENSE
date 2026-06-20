@@ -1,0 +1,120 @@
+SafeVM Community License v1.0
+=============================
+
+Copyright (c) 2026 Rufat Mammadli / Altailab LLC. All rights reserved.
+
+"SafeVM" and this software (the "Software") are owned by Rufat Mammadli,
+founder of Altailab LLC ("Licensor"). This is the Community Edition of the
+Software. It is source-available, not "open source" as defined by the Open
+Source Initiative, because of the commercial-use restriction on Modified
+Versions set out in Section 3.
+
+By using, copying, modifying, or distributing the Software, You agree to the
+terms below. If You do not agree, You may not use the Software.
+
+
+1. DEFINITIONS
+
+  "You" / "Your" means the individual or legal entity exercising rights under
+  this License.
+
+  "Modified Version" means any work that is based on, derived from, adapted
+  from, or that contains any portion of the Software, in source or binary form,
+  with any addition to, deletion from, or change to the Software. Mere
+  configuration of the unmodified Software through its provided settings, and
+  packaging or deployment of the unmodified Software, are NOT Modified Versions.
+
+  "Commercial Use" means any use of the Software that is primarily intended for
+  or directed toward commercial advantage or monetary compensation, including
+  without limitation: using the Software to operate a business or its internal
+  operations; offering the Software (or access to it) to third parties as a
+  hosted, managed, or "as-a-service" product; or distributing or selling the
+  Software or a Modified Version as part of a commercial offering.
+
+  "Non-Commercial Use" means use for personal, educational, academic research,
+  evaluation, experimentation, or development purposes that is not Commercial
+  Use.
+
+
+2. GRANT FOR THE UNMODIFIED SOFTWARE
+
+  Subject to Your compliance with this License, Licensor grants You a
+  worldwide, royalty-free, non-exclusive license to use, copy, and distribute
+  the unmodified Software, INCLUDING FOR COMMERCIAL USE, free of charge.
+
+  This means You may run the Community Edition of the Software, as provided and
+  unmodified, to operate Your own business or organization at no cost. The
+  Community Edition is a limited feature set; additional features (such as the
+  multi-tenant Cloud Edition) are licensed separately by Licensor.
+
+
+3. GRANT AND RESTRICTION FOR MODIFIED VERSIONS
+
+  Subject to Your compliance with this License, Licensor grants You a
+  worldwide, royalty-free, non-exclusive license to create Modified Versions
+  and to use and distribute them FOR NON-COMMERCIAL USE ONLY.
+
+  YOU MAY NOT MAKE ANY COMMERCIAL USE OF A MODIFIED VERSION of the Software, nor
+  distribute, offer, host, or deploy a Modified Version for any Commercial Use,
+  WITHOUT A SEPARATE COMMERCIAL LICENSE granted in writing by Licensor.
+
+  For a commercial license covering Modified Versions, contact Altailab LLC
+  (see Section 9).
+
+
+4. CONDITIONS APPLICABLE TO ALL USE
+
+  a. You must retain, in all copies and in any distribution of the Software or a
+     permitted Modified Version, this License, the copyright notice above, and
+     all author, attribution, and notice text.
+
+  b. You may not remove, obscure, or alter any "SafeVM", Altailab LLC, or Rufat
+     Mammadli attribution, copyright, trademark, or notice in the Software.
+
+  c. This License does not grant permission to use the trade names, trademarks,
+     service marks, or product names of the Licensor, except as required for
+     the attribution in Section 4(a).
+
+
+5. CONTRIBUTIONS
+
+  Unless You state otherwise, any contribution You intentionally submit for
+  inclusion in the Software is provided to Licensor under the terms of this
+  License, and You grant Licensor a perpetual, worldwide, royalty-free license
+  to use, relicense, and distribute Your contribution, including under different
+  terms (such as a commercial license).
+
+
+6. TERMINATION
+
+  This License and the rights granted to You terminate automatically if You
+  breach any of its terms. Upon termination, You must cease all use and
+  distribution of the Software and destroy all copies in Your possession. The
+  Licensor may, at its discretion, reinstate the License if the breach is cured.
+
+
+7. DISCLAIMER OF WARRANTY
+
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+  FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.
+
+
+8. LIMITATION OF LIABILITY
+
+  IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+  DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR
+  OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE
+  OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+9. COMMERCIAL LICENSING AND CONTACT
+
+  For a commercial license (including any Commercial Use of a Modified Version),
+  enterprise terms, or the multi-tenant Cloud Edition:
+
+      Rufat Mammadli / Altailab LLC
+      https://github.com/Altailab/safevm
+
+  Third-party components included with or used by the Software remain under their
+  own respective licenses.

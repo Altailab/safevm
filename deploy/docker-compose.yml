@@ -1,0 +1,43 @@
+# Single-box dev/self-host stack: the backing services for SafeVM.
+# App processes (control-plane, node-agent, web) run via `bun run dev` against these.
+# A production single-box install will add the app containers here too.
+name: safevm-cloud
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: safevm
+      POSTGRES_PASSWORD: safevm
+      POSTGRES_DB: safevm
+    ports:
+      - "5433:5432" # host 5433 -> avoids a local Postgres already on 5432
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U safevm"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    environment:
+      RABBITMQ_DEFAULT_USER: safevm
+      RABBITMQ_DEFAULT_PASS: safevm
+    ports:
+      - "5672:5672" # amqp
+      - "15672:15672" # management UI
+    volumes:
+      - rabbitmqdata:/var/lib/rabbitmq
+
+volumes:
+  pgdata:
+  redisdata:
+  rabbitmqdata:

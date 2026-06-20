@@ -1,0 +1,185 @@
+// SafeVM control-plane data model.
+// Multi-tenancy seam: tenantId is "default" in OSS; the cloud layer overrides it.
+// Every tenant-scoped row carries tenantId so the cloud control plane drops in
+// without a schema fork.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  admin
+  member
+}
+
+enum SessionStatus {
+  pending
+  starting
+  running
+  stopping
+  stopped
+  failed
+}
+
+enum WorkspaceKind {
+  persistent
+  disposable
+}
+
+// Who drives a session: a person, an AI agent, or both (human watches/approves).
+enum SessionDriver {
+  human
+  agent
+  copilot
+}
+
+enum AgentTaskStatus {
+  pending
+  running
+  awaiting_approval
+  succeeded
+  failed
+  stopped
+}
+
+enum AgentActionType {
+  screenshot
+  click
+  type
+  key
+  scroll
+  exec
+  wait
+  finish
+}
+
+model Tenant {
+  id        String   @id // "default" in OSS
+  name      String
+  createdAt DateTime @default(now())
+}
+
+model User {
+  id           String      @id @default(uuid())
+  tenantId     String      @default("default")
+  email        String
+  passwordHash String? // null once OIDC is wired
+  role         Role        @default(member)
+  createdAt    DateTime    @default(now())
+  workspaces   Workspace[]
+  sessions     Session[]
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+}
+
+// A reusable golden image (the OS template a workspace boots from).
+model Image {
+  id          String      @id @default(uuid())
+  tenantId    String      @default("default")
+  name        String
+  kernelRef   String // node-agent-resolvable kernel ref (path or registry)
+  rootfsRef   String // node-agent-resolvable rootfs ref
+  description String?
+  createdAt   DateTime    @default(now())
+  workspaces  Workspace[]
+
+  @@index([tenantId])
+}
+
+// A workspace = an image assigned to a user, with resource + policy config.
+model Workspace {
+  id        String        @id @default(uuid())
+  tenantId  String        @default("default")
+  ownerId   String
+  owner     User          @relation(fields: [ownerId], references: [id])
+  imageId   String
+  image     Image         @relation(fields: [imageId], references: [id])
+  name      String
+  kind      WorkspaceKind @default(persistent)
+  vcpus     Int           @default(2)
+  memMib    Int           @default(2048)
+  // egress / clipboard / file-transfer rules enforced by the node agent.
+  policy    Json          @default("{}")
+  createdAt DateTime      @default(now())
+  sessions  Session[]
+  agentTasks AgentTask[]
+
+  @@index([tenantId])
+}
+
+// A live (or historical) running instance of a workspace on some node.
+model Session {
+  id          String        @id @default(uuid())
+  tenantId    String        @default("default")
+  workspaceId String
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id])
+  userId      String
+  user        User          @relation(fields: [userId], references: [id])
+  nodeId      String?
+  status      SessionStatus @default(pending)
+  driver      SessionDriver @default(human)
+  connectUrl  String? // streaming endpoint the browser dials
+  startedAt   DateTime      @default(now())
+  endedAt     DateTime?
+  agentTasks  AgentTask[]
+
+  @@index([tenantId, status])
+}
+
+// Tamper-evident-ish audit trail. Every meaningful action lands here.
+model AuditLog {
+  id        String   @id @default(uuid())
+  tenantId  String   @default("default")
+  actorId   String?
+  action    String // e.g. "session.connect"
+  target    String?
+  meta      Json     @default("{}")
+  createdAt DateTime @default(now())
+
+  @@index([tenantId, createdAt])
+}
+
+// A natural-language goal handed to an AI agent that operates a workspace.
+// The agent runner executes an observe->think->act loop and records each step.
+model AgentTask {
+  id          String          @id @default(uuid())
+  tenantId    String          @default("default")
+  workspaceId String
+  workspace   Workspace       @relation(fields: [workspaceId], references: [id])
+  sessionId   String?
+  session     Session?        @relation(fields: [sessionId], references: [id])
+  userId      String // who requested the task
+  goal        String
+  status      AgentTaskStatus @default(pending)
+  model       String          @default("mock") // mock | claude
+  maxSteps    Int             @default(20)
+  result      String? // final summary / failure reason
+  createdAt   DateTime        @default(now())
+  endedAt     DateTime?
+  steps       AgentStep[]
+
+  @@index([tenantId, status])
+}
+
+// One iteration of the agent loop: what it saw, thought, and did.
+// This trajectory doubles as an audit trail and a training-data source.
+model AgentStep {
+  id          String          @id @default(uuid())
+  taskId      String
+  task        AgentTask       @relation(fields: [taskId], references: [id])
+  idx         Int // step order within the task
+  thought     String? // model reasoning
+  actionType  AgentActionType
+  action      Json            @default("{}") // action params (coords, text, cmd, ...)
+  observation String? // text observation / screenshot ref
+  blocked     Boolean         @default(false) // guard vetoed this action
+  createdAt   DateTime        @default(now())
+
+  @@index([taskId, idx])
+}

@@ -1,0 +1,31 @@
+{
+  "name": "@safevm/control-plane",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "author": "Rufat Mammadli (Altailab LLC)",
+  "license": "SEE LICENSE IN LICENSE",
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "start": "bun run src/index.ts",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:seed": "bun run prisma/seed.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "elysia": "^1.1.0",
+    "@elysiajs/cors": "^1.1.0",
+    "@elysiajs/jwt": "^1.1.0",
+    "@prisma/client": "^5.18.0",
+    "ioredis": "^5.4.1",
+    "amqplib": "^0.10.4"
+  },
+  "devDependencies": {
+    "prisma": "^5.18.0",
+    "@types/amqplib": "^0.10.5",
+    "bun-types": "latest",
+    "typescript": "^5.5.0"
+  }
+}

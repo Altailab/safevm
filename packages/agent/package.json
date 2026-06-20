@@ -1,0 +1,21 @@
+{
+  "name": "@safevm/agent",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "author": "Rufat Mammadli (Altailab LLC)",
+  "license": "SEE LICENSE IN LICENSE",
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "start": "bun run src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "amqplib": "^0.10.4"
+  },
+  "devDependencies": {
+    "@types/amqplib": "^0.10.5",
+    "bun-types": "latest",
+    "typescript": "^5.5.0"
+  }
+}
