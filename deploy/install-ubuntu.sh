@@ -73,6 +73,47 @@ if [[ -z "$REPO_DIR" ]]; then
 fi
 cd "$REPO_DIR"
 chown -R "$APP_USER" "$REPO_DIR"
+
+# --- interactive prompts (when run directly on a terminal) ------------------
+# Skipped if a value is already set, if there's no TTY (CI/piped), or if
+# SAFEVM_NONINTERACTIVE=1 (e.g. when fresh-install.sh already collected them).
+have_tty() { [[ -e /dev/tty ]]; }
+is_ip() { [[ "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] || [[ "$1" == *:*:* ]]; }
+ask() {
+  local var="$1" prompt="$2" def="${3:-}" val
+  [[ -n "${!var:-}" ]] && return
+  if [[ -n "$def" ]]; then
+    read -r -p "$prompt [$def]: " val </dev/tty || true
+    printf -v "$var" '%s' "${val:-$def}"
+  else
+    read -r -p "$prompt: " val </dev/tty || true
+    printf -v "$var" '%s' "$val"
+  fi
+}
+ask_secret() {
+  local var="$1" prompt="$2" p1 p2
+  [[ -n "${!var:-}" ]] && return
+  while true; do
+    read -rs -p "$prompt (blank = auto-generate): " p1 </dev/tty; echo >/dev/tty
+    [[ -z "$p1" ]] && return
+    read -rs -p "Confirm: " p2 </dev/tty; echo >/dev/tty
+    [[ "$p1" == "$p2" ]] && { printf -v "$var" '%s' "$p1"; return; }
+    echo "  passwords don't match" >/dev/tty
+  done
+}
+# Interactive only when run bare (no PUBLIC_ADDR given) on a terminal — so the
+# documented `... PUBLIC_ADDR=x bash` one-liner stays fully non-interactive.
+if [[ -z "${PUBLIC_ADDR:-}" ]] && have_tty && [[ "${SAFEVM_NONINTERACTIVE:-0}" != "1" ]]; then
+  echo "=== SafeVM install — Enter accepts the [default] ==="
+  detected="$(curl -fsS --max-time 5 https://api.ipify.org 2>/dev/null || true)"
+  detected="${detected:-$(hostname -I | awk '{print $1}')}"
+  ask PUBLIC_ADDR "Public address (domain or server IP)" "$detected"
+  is_ip "${PUBLIC_ADDR:-}" || ask TLS_EMAIL "Email for Let's Encrypt HTTPS (blank = HTTP only)" ""
+  ask SEED_ADMIN_EMAIL "Admin email" "admin@safevm.local"
+  ask_secret SEED_ADMIN_PASSWORD "Admin password"
+  ask RUNTIME "Isolation runtime (docker|mock|firecracker)" "docker"
+fi
+
 RUNTIME="${RUNTIME:-docker}"
 SEED_ADMIN_EMAIL="${SEED_ADMIN_EMAIL:-admin@safevm.local}"
 SEED_ADMIN_PASSWORD="${SEED_ADMIN_PASSWORD:-$(openssl rand -base64 12)}"

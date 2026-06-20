@@ -32,6 +32,27 @@ APP_USER="${APP_USER:-${SUDO_USER:-root}}"
 COMPOSE_FILE="$INSTALL_DIR/deploy/docker-compose.yml"
 PROJECT="safevm-cloud"
 
+# --- interactive prompts (when run directly on a terminal) ------------------
+# Skipped if the value is preset, there's no TTY, or SAFEVM_NONINTERACTIVE=1.
+have_tty() { [[ -e /dev/tty ]]; }
+yesno() { # yesno VAR "prompt" — sets VAR=1 on yes; respects a preset value
+  local var="$1" prompt="$2" ans
+  [[ -n "${!var:-}" ]] && return
+  { have_tty && [[ "${SAFEVM_NONINTERACTIVE:-0}" != "1" ]]; } || return
+  read -r -p "$prompt [y/N]: " ans </dev/tty || true
+  [[ "$ans" =~ ^[Yy] ]] && printf -v "$var" '%s' "1"
+}
+if have_tty && [[ "${SAFEVM_NONINTERACTIVE:-0}" != "1" ]]; then
+  yesno PURGE_DATA   "Also DELETE all data (Postgres/Redis/RabbitMQ volumes)?"
+  yesno REMOVE_DOCKER "Also remove Docker Engine?"
+  yesno REMOVE_NODE   "Also remove Node.js?"
+fi
+# Safety confirmation (skip with ASSUME_YES=1 or when non-interactive).
+if [[ "${ASSUME_YES:-0}" != "1" ]] && have_tty && [[ "${SAFEVM_NONINTERACTIVE:-0}" != "1" ]]; then
+  read -r -p "Remove SafeVM from this box? type 'yes': " __ok </dev/tty || true
+  [[ "$__ok" == "yes" ]] || { echo "Aborted."; exit 0; }
+fi
+
 echo "==> SafeVM uninstall (PURGE_DATA=${PURGE_DATA:-0} REMOVE_DOCKER=${REMOVE_DOCKER:-0} REMOVE_NGINX=${REMOVE_NGINX:-0} REMOVE_NODE=${REMOVE_NODE:-0})"
 
 # --- 1. app systemd services ----------------------------------------------
