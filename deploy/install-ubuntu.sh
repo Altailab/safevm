@@ -165,9 +165,11 @@ PORT=3001
 RUNTIME=$RUNTIME
 NODE_ID=node-1
 WEBTOP_IMAGE=${WEBTOP_IMAGE:-lscr.io/linuxserver/webtop:ubuntu-xfce}
-# Desktop containers are published so the remote browser can reach them, and
-# tagged with the public host so connectUrl is browser-reachable (not localhost).
-DOCKER_BIND_ADDR=0.0.0.0
+# Per-session HTTPS proxy: desktops bind to localhost and are served under this
+# origin at /d/<sessionId>/ via a per-session nginx location (written by the
+# node-agent). Satisfies KasmVNC's secure-context requirement; no exposed ports.
+DESKTOP_PROXY=1
+NGINX_SESSIONS_DIR=/etc/nginx/safevm-sessions
 DOCKER_HOST_ADDR=$PUBLIC_ADDR
 ENV
 chown "$APP_USER" "$REPO_DIR/.env"
@@ -240,9 +242,18 @@ mk_unit agent         packages/agent         "AI agent runner"
 systemctl daemon-reload
 systemctl enable --now safevm-control-plane safevm-node-agent safevm-agent
 
-# --- 8. nginx: serve dashboard + proxy the API -----------------------------
+# --- 8. nginx: serve dashboard + proxy the API + per-session desktops -------
 echo "==> Configuring nginx"
+# Per-session desktop proxy locations are dropped here by the node-agent.
+mkdir -p /etc/nginx/safevm-sessions
 cat > /etc/nginx/sites-available/safevm <<NGINX
+# Map Upgrade header → Connection value so WebSocket upgrades work and normal
+# requests get "close" (not a bogus "upgrade"). Used by the API + desktop proxies.
+map \$http_upgrade \$connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
 server {
     listen $HTTP_PORT;
     server_name $PUBLIC_ADDR;
@@ -250,10 +261,9 @@ server {
     root $REPO_DIR/packages/web/dist;
     index index.html;
 
-    # SPA: serve files, fall back to index.html for client-side routes.
-    location / {
-        try_files \$uri \$uri/ /index.html;
-    }
+    # Per-session desktop proxies: /d/<sessionId>/ → 127.0.0.1:<port> (KasmVNC),
+    # written by the node-agent on connect, removed on disconnect.
+    include /etc/nginx/safevm-sessions/*.conf;
 
     # API + health → control plane (same origin, so no CORS in the browser).
     location ~ ^/(api|health) {
@@ -263,9 +273,13 @@ server {
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
-        # WebRTC/WebSocket signalling (Selkies tier) rides through here too.
         proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
+        proxy_set_header Connection \$connection_upgrade;
+    }
+
+    # SPA: serve files, fall back to index.html for client-side routes.
+    location / {
+        try_files \$uri \$uri/ /index.html;
     }
 }
 NGINX
@@ -298,8 +312,8 @@ Backing:    docker compose -f deploy/docker-compose.yml ps
 Next steps:
   - Lock down the firewall: allow 80/443 (and 22), block 5433/6379/5672/15672
     from the internet (ufw allow 80,443,22; ufw enable).
-  - Desktop containers publish on $PUBLIC_ADDR:<random port>. For the docker
-    tier the in-app viewer connects there directly; put these behind the proxy
-    + TLS before any real use.
+  - Desktops are bound to localhost and served via nginx at $PUBLIC_URL/d/<id>/
+    (no exposed desktop ports). For working desktops, KasmVNC needs HTTPS — use a
+    domain + TLS_EMAIL so /d/<id>/ is served over a real certificate.
 ============================================================================
 DONE

@@ -1,3 +1,4 @@
+import { unlink } from "node:fs/promises";
 import type { Runtime, StartSpec, StartResult } from "./types.ts";
 
 // Container runtime: launches a streaming-desktop container per session
@@ -14,6 +15,16 @@ const HOST = process.env.DOCKER_HOST_ADDR ?? "localhost";
 // Where published desktop ports bind. 127.0.0.1 (default) = local-only; on a
 // server set DOCKER_BIND_ADDR=0.0.0.0 so a remote browser can reach the desktop.
 const BIND = process.env.DOCKER_BIND_ADDR ?? "127.0.0.1";
+
+// Per-session HTTPS proxy. When DESKTOP_PROXY=1 the desktop is bound to localhost
+// and served under the dashboard's own origin at `/d/<sessionId>/` via a small
+// nginx location written per session. This satisfies KasmVNC's secure-context
+// requirement (real TLS, no mixed content) and keeps desktop ports off the public
+// interface. connectUrl is relative by default (origin-agnostic); set
+// DESKTOP_BASE_URL to force an absolute base.
+const PROXY = process.env.DESKTOP_PROXY === "1";
+const SESSIONS_DIR = process.env.NGINX_SESSIONS_DIR ?? "/etc/nginx/safevm-sessions";
+const BASE_URL = process.env.DESKTOP_BASE_URL ?? "";
 
 // All desktops share ONE network with inter-container comms disabled
 // (enable_icc=false): each session still gets egress + its published port, but
@@ -52,6 +63,63 @@ async function docker(args: string[]): Promise<string> {
   return out.trim();
 }
 
+// Run a command, returning its exit code + stderr (for nginx control).
+async function run(cmd: string[]): Promise<{ code: number; err: string }> {
+  const p = Bun.spawn(cmd, { stdout: "pipe", stderr: "pipe" });
+  const [err, code] = await Promise.all([new Response(p.stderr).text(), p.exited]);
+  return { code, err: err.trim() };
+}
+
+async function reloadNginx(): Promise<void> {
+  const test = await run(["nginx", "-t"]);
+  if (test.code !== 0) throw new Error(`nginx config test failed: ${test.err}`);
+  const reload = await run(["nginx", "-s", "reload"]);
+  if (reload.code !== 0) throw new Error(`nginx reload failed: ${reload.err}`);
+}
+
+// Wait until the desktop's HTTP server answers (any response = it's up), so we
+// only publish connectUrl once it's actually serving. Bounded; proceeds anyway.
+async function waitForDesktop(port: string, tries = 40): Promise<void> {
+  for (let i = 0; i < tries; i++) {
+    try {
+      await fetch(`http://127.0.0.1:${port}/`, { signal: AbortSignal.timeout(2000) });
+      return; // any HTTP response means KasmVNC is listening
+    } catch {
+      await Bun.sleep(1000);
+    }
+  }
+}
+
+const sessionConf = (sessionId: string) => `${SESSIONS_DIR}/${sessionId}.conf`;
+
+// Write the per-session nginx location and reload. proxy_pass' trailing slash
+// strips the /d/<id>/ prefix, so the desktop is served as if at root (its assets
+// use relative paths, so they resolve under /d/<id>/). $connection_upgrade comes
+// from a map block the installer adds — it makes WebSocket upgrades automatic.
+async function writeSessionProxy(sessionId: string, hostPort: string): Promise<void> {
+  const conf = `# SafeVM session ${sessionId}
+location /d/${sessionId}/ {
+    proxy_pass http://127.0.0.1:${hostPort}/;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection $connection_upgrade;
+    proxy_buffering off;
+    proxy_read_timeout 3600s;
+}
+`;
+  await Bun.write(sessionConf(sessionId), conf); // Bun.write creates parent dirs
+  await reloadNginx();
+}
+
+async function removeSessionProxy(sessionId: string): Promise<void> {
+  await unlink(sessionConf(sessionId)).catch(() => {});
+  await reloadNginx().catch(() => {});
+}
+
 const containerName = (sessionId: string) => `safevm-${sessionId}`;
 
 export class DockerRuntime implements Runtime {
@@ -67,6 +135,9 @@ export class DockerRuntime implements Runtime {
     // Isolated, ICC-disabled network so desktops can't see each other (#2).
     await ensureDesktopNetwork();
 
+    // In proxy mode the desktop stays on localhost (only nginx reaches it).
+    const bind = PROXY ? "127.0.0.1" : BIND;
+
     // Let Docker assign a free host port (avoids collisions across restarts).
     // Webtop serves its desktop over HTTP on container port 3000.
     await docker([
@@ -74,7 +145,7 @@ export class DockerRuntime implements Runtime {
       "--name", container,
       "--network", DESKTOP_NET,
       "--shm-size", "1g",
-      "-p", `${BIND}::3000`,
+      "-p", `${bind}::3000`,
       "--cpus", String(spec.vcpus),
       "--memory", `${spec.memMib}m`,
       // Hardening (#3): least privilege.
@@ -92,11 +163,25 @@ export class DockerRuntime implements Runtime {
       throw new Error("could not determine assigned host port");
     }
 
+    if (PROXY) {
+      // Serve the desktop under the dashboard's TLS origin at /d/<id>/.
+      try {
+        await waitForDesktop(hostPort);
+        await writeSessionProxy(spec.sessionId, hostPort);
+      } catch (e) {
+        await docker(["rm", "-f", container]).catch(() => {});
+        throw e;
+      }
+      // Relative by default → works on whatever origin the dashboard is served.
+      return { connectUrl: `${BASE_URL}/d/${spec.sessionId}/`, nodeId: NODE_ID };
+    }
+
     return { connectUrl: `http://${HOST}:${hostPort}/`, nodeId: NODE_ID };
   }
 
   async stop(sessionId: string): Promise<void> {
     await docker(["rm", "-f", containerName(sessionId)]).catch(() => {});
+    if (PROXY) await removeSessionProxy(sessionId);
   }
 
   // Running session containers (excludes the infra `safevm-cloud-*` containers).
