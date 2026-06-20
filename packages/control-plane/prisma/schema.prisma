@@ -145,6 +145,16 @@ model AuditLog {
   @@index([tenantId, createdAt])
 }
 
+// Instance setup/config (singleton per tenant). Drives the first-run setup
+// wizard: the public domain and whether HTTPS has been provisioned.
+model Setting {
+  tenantId     String   @id @default("default")
+  publicDomain String?
+  tlsEnabled   Boolean  @default(false)
+  setupDone    Boolean  @default(false)
+  updatedAt    DateTime @updatedAt
+}
+
 // A natural-language goal handed to an AI agent that operates a workspace.
 // The agent runner executes an observe->think->act loop and records each step.
 model AgentTask {

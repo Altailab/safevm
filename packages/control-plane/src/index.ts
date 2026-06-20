@@ -6,6 +6,7 @@ import { workspaceRoutes } from "./routes/workspaces.ts";
 import { sessionRoutes } from "./routes/sessions.ts";
 import { adminRoutes } from "./routes/admin.ts";
 import { agentRoutes } from "./routes/agents.ts";
+import { setupRoutes } from "./routes/setup.ts";
 import { authRoutes } from "./auth.ts";
 import { startEventConsumer } from "./events.ts";
 
@@ -17,6 +18,7 @@ const app = new Elysia()
   .use(sessionRoutes)
   .use(adminRoutes)
   .use(agentRoutes)
+  .use(setupRoutes)
   .listen(env.PORT);
 
 // Reconcile node-agent status events back into Postgres/Redis.

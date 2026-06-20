@@ -24,6 +24,7 @@ import { Route as authForgotPasswordRouteImport } from './routes/(auth)/forgot-p
 import { Route as AuthenticatedSettingsRouteRouteImport } from './routes/_authenticated/settings/route'
 import { Route as AuthenticatedWorkspacesIndexRouteImport } from './routes/_authenticated/workspaces/index'
 import { Route as AuthenticatedUsersIndexRouteImport } from './routes/_authenticated/users/index'
+import { Route as AuthenticatedSetupIndexRouteImport } from './routes/_authenticated/setup/index'
 import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings/index'
 import { Route as AuthenticatedSessionsIndexRouteImport } from './routes/_authenticated/sessions/index'
 import { Route as AuthenticatedImagesIndexRouteImport } from './routes/_authenticated/images/index'
@@ -110,6 +111,11 @@ const AuthenticatedWorkspacesIndexRoute =
 const AuthenticatedUsersIndexRoute = AuthenticatedUsersIndexRouteImport.update({
   id: '/users/',
   path: '/users/',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSetupIndexRoute = AuthenticatedSetupIndexRouteImport.update({
+  id: '/setup/',
+  path: '/setup/',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedSettingsIndexRoute =
@@ -202,6 +208,7 @@ export interface FileRoutesByFullPath {
   '/images/': typeof AuthenticatedImagesIndexRoute
   '/sessions/': typeof AuthenticatedSessionsIndexRoute
   '/settings/': typeof AuthenticatedSettingsIndexRoute
+  '/setup/': typeof AuthenticatedSetupIndexRoute
   '/users/': typeof AuthenticatedUsersIndexRoute
   '/workspaces/': typeof AuthenticatedWorkspacesIndexRoute
 }
@@ -228,6 +235,7 @@ export interface FileRoutesByTo {
   '/images': typeof AuthenticatedImagesIndexRoute
   '/sessions': typeof AuthenticatedSessionsIndexRoute
   '/settings': typeof AuthenticatedSettingsIndexRoute
+  '/setup': typeof AuthenticatedSetupIndexRoute
   '/users': typeof AuthenticatedUsersIndexRoute
   '/workspaces': typeof AuthenticatedWorkspacesIndexRoute
 }
@@ -257,6 +265,7 @@ export interface FileRoutesById {
   '/_authenticated/images/': typeof AuthenticatedImagesIndexRoute
   '/_authenticated/sessions/': typeof AuthenticatedSessionsIndexRoute
   '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
+  '/_authenticated/setup/': typeof AuthenticatedSetupIndexRoute
   '/_authenticated/users/': typeof AuthenticatedUsersIndexRoute
   '/_authenticated/workspaces/': typeof AuthenticatedWorkspacesIndexRoute
 }
@@ -286,6 +295,7 @@ export interface FileRouteTypes {
     | '/images/'
     | '/sessions/'
     | '/settings/'
+    | '/setup/'
     | '/users/'
     | '/workspaces/'
   fileRoutesByTo: FileRoutesByTo
@@ -312,6 +322,7 @@ export interface FileRouteTypes {
     | '/images'
     | '/sessions'
     | '/settings'
+    | '/setup'
     | '/users'
     | '/workspaces'
   id:
@@ -340,6 +351,7 @@ export interface FileRouteTypes {
     | '/_authenticated/images/'
     | '/_authenticated/sessions/'
     | '/_authenticated/settings/'
+    | '/_authenticated/setup/'
     | '/_authenticated/users/'
     | '/_authenticated/workspaces/'
   fileRoutesById: FileRoutesById
@@ -465,6 +477,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedUsersIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/setup/': {
+      id: '/_authenticated/setup/'
+      path: '/setup'
+      fullPath: '/setup/'
+      preLoaderRoute: typeof AuthenticatedSetupIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/settings/': {
       id: '/_authenticated/settings/'
       path: '/'
@@ -577,6 +596,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAuditIndexRoute: typeof AuthenticatedAuditIndexRoute
   AuthenticatedImagesIndexRoute: typeof AuthenticatedImagesIndexRoute
   AuthenticatedSessionsIndexRoute: typeof AuthenticatedSessionsIndexRoute
+  AuthenticatedSetupIndexRoute: typeof AuthenticatedSetupIndexRoute
   AuthenticatedUsersIndexRoute: typeof AuthenticatedUsersIndexRoute
   AuthenticatedWorkspacesIndexRoute: typeof AuthenticatedWorkspacesIndexRoute
 }
@@ -590,6 +610,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAuditIndexRoute: AuthenticatedAuditIndexRoute,
   AuthenticatedImagesIndexRoute: AuthenticatedImagesIndexRoute,
   AuthenticatedSessionsIndexRoute: AuthenticatedSessionsIndexRoute,
+  AuthenticatedSetupIndexRoute: AuthenticatedSetupIndexRoute,
   AuthenticatedUsersIndexRoute: AuthenticatedUsersIndexRoute,
   AuthenticatedWorkspacesIndexRoute: AuthenticatedWorkspacesIndexRoute,
 }

@@ -215,9 +215,10 @@ DOCKER_HOST_ADDR=$PUBLIC_ADDR
 ENV
 chown "$APP_USER" "$REPO_DIR/.env"
 
-# The dashboard talks to the API at the same origin (nginx proxies /api + /health).
-echo "VITE_API_URL=$PUBLIC_URL" > "$REPO_DIR/packages/web/.env"
-chown "$APP_USER" "$REPO_DIR/packages/web/.env"
+# The dashboard calls its API same-origin (nginx proxies /api + /health), so it
+# needs NO baked base URL — this lets the setup wizard flip http→https without a
+# rebuild. Ensure no stale VITE_API_URL lingers from a previous install.
+rm -f "$REPO_DIR/packages/web/.env"
 
 # --- 5. backing services (Postgres / Redis / RabbitMQ) ---------------------
 echo "==> Starting backing services (docker compose)"

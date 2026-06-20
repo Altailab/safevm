@@ -3,9 +3,11 @@ import { getCookie } from '@/lib/cookies'
 
 const ACCESS_TOKEN = 'thisisjustarandomstring'
 
-// SafeVM control-plane client. Base URL from env (Vite), defaults to local dev.
+// SafeVM control-plane client. Same-origin in production (nginx proxies /api),
+// so the dashboard works on http://ip OR https://domain with no rebuild. Falls
+// back to the local API only during `vite dev`.
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ?? 'http://localhost:3001',
+  baseURL: import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? 'http://localhost:3001' : ''),
 })
 
 // Attach the JWT (stored by the auth store as a JSON-encoded cookie) to every request.
@@ -164,4 +166,25 @@ export const SafeVM = {
     api.post<AgentTask>('/api/agent-tasks', input).then((r) => r.data),
   stopAgentTask: (id: string) =>
     api.post(`/api/agent-tasks/${id}/stop`).then((r) => r.data),
+  getSetupStatus: () => api.get<SetupStatus>('/api/setup/status').then((r) => r.data),
+  verifyDns: (domain: string) =>
+    api.post<DnsCheck>('/api/setup/verify-dns', { domain }).then((r) => r.data),
+  enableTls: (domain: string, email: string) =>
+    api.post<{ ok: boolean; url: string }>('/api/setup/enable-tls', { domain, email }).then((r) => r.data),
+  skipSetup: () => api.post('/api/setup/skip').then((r) => r.data),
+}
+
+export type SetupStatus = {
+  setupDone: boolean
+  tlsEnabled: boolean
+  publicDomain: string | null
+  serverIp: string
+}
+
+export type DnsCheck = {
+  domain: string
+  serverIp: string
+  addresses: string[]
+  resolves: boolean
+  matches: boolean
 }
